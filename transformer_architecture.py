@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 from jax import Array
+from jax.nn import relu
 from typing import Tuple, Callable, Optional
 
 JaxArray = Array
@@ -186,7 +187,7 @@ def encoder_layer(x: JaxArray,
                                       Wq=Wq, Wk=Wk, Wv=Wv, Wo=Wo,
                                       mask=mask)
     x = add_and_norm(x, mha_out)
-    ffn_out = position_wise_ffn(x, W1, b1, W2, b2, activation=jnp.relu)
+    ffn_out = position_wise_ffn(x, W1, b1, W2, b2, activation=relu)
     x = add_and_norm(x, ffn_out)
     return x
 
@@ -212,7 +213,7 @@ def decoder_layer(x: JaxArray, enc_out: JaxArray,
                                             mask=cross_mask)
     x = add_and_norm(x, mha_out_cross)
     # Feed-forward.
-    ffn_out = position_wise_ffn(x, W1, b1, W2, b2, activation=jnp.relu)
+    ffn_out = position_wise_ffn(x, W1, b1, W2, b2, activation=relu)
     x = add_and_norm(x, ffn_out)
     return x
 
