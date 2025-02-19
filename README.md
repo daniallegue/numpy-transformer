@@ -1,5 +1,4 @@
-```markdown
-# Transformer Project README
+# Numpy Transformer Project
 
 > **Reference**: This project is based on the architecture and concepts presented in the paper [*Attention Is All You Need*](https://arxiv.org/abs/1706.03762) by Vaswani et al. We implement the core components of the Transformer (Multi-Head Attention, Feed-Forward Networks, Positional Encoding, etc.) in pure JAX, and showcase a training procedure on a dummy dataset using JAX’s `jit` compilation.
 
@@ -19,7 +18,7 @@
    - [Forward Pass](#forward-pass)  
 4. [Training Procedure](#4-training-procedure)  
    - [Parameters (as in the Paper)](#parameters-as-in-the-paper)  
-   - [Dummy Dataset and JIT Compilation](#dummy-dataset-and-jit-compilation)  
+   - [Dummy Dataset and JIT Compilation](#dummy-dataset-and-jit-compilation)
 
 ---
 
@@ -45,21 +44,20 @@ Below is the high-level Transformer architecture from the paper:
 
 It consists of an **Encoder** stack and a **Decoder** stack. Each layer contains:
 
-1. **Multi-Head Self-Attention** (masked in the decoder’s first sub-layer).  
-2. **Add & Norm** (residual connection + layer normalization).  
-3. **Feed-Forward Network** (position-wise).  
-4. **Add & Norm** again.
+1. **Multi-Head Self-Attention** (masked in the decoder’s first sub-layer)  
+2. **Add & Norm** (residual connection + layer normalization)  
+3. **Feed-Forward Network** (position-wise)  
+4. **Add & Norm** again
 
 ### 2.1 Scaled Dot-Product Attention
 
-At the heart of the model is **scaled dot-product attention**. Given query (\(\mathbf{Q}\)), key (\(\mathbf{K}\)), and value (\(\mathbf{V}\)) matrices, the attention output is computed as:
+At the heart of the model is **scaled dot-product attention**. Given query (Q), key (K), and value (V) matrices, the attention output is computed as:
 
-\[
-\text{Attention}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) 
-= \text{softmax}\Bigl(\frac{\mathbf{Q} \mathbf{K}^\top}{\sqrt{d_k}}\Bigr) \mathbf{V}
-\]
+```
+Attention(Q, K, V) = softmax( (QK^T) / sqrt(d_k) ) * V
+```
 
-where \(d_k\) is the dimensionality of the keys (and queries).
+where `d_k` is the dimensionality of the keys (and queries).
 
 ![Scaled Dot-Product Attention](https://raw.githubusercontent.com/tensorflow/tensor2tensor/master/tensor2tensor/visualization/scaled_dot_product_attention.png "Scaled Dot-Product")
 
@@ -67,16 +65,15 @@ where \(d_k\) is the dimensionality of the keys (and queries).
 
 To allow the model to attend to different positions from different representation subspaces, **multi-head attention** is used. Multiple attention “heads” each compute scaled dot-product attention in parallel, and their outputs are concatenated:
 
-\[
-\text{MultiHead}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) 
-= \text{Concat}(\text{head}_1, \dots, \text{head}_h) \mathbf{W}^O
-\]
+```
+MultiHead(Q, K, V) = Concat(head_1, ..., head_h) * W^O
+```
 
-where each head \(i\) is:
+where each head `i` is:
 
-\[
-\text{head}_i = \text{Attention}(\mathbf{Q} \mathbf{W}_i^Q,\, \mathbf{K} \mathbf{W}_i^K,\, \mathbf{V} \mathbf{W}_i^V)
-\]
+```
+head_i = Attention(QW_i^Q, KW_i^K, VW_i^V)
+```
 
 ![Multi-Head Attention](https://raw.githubusercontent.com/tensorflow/tensor2tensor/master/tensor2tensor/visualization/multihead_attention.png "Multi-Head Attention")
 
@@ -84,9 +81,9 @@ where each head \(i\) is:
 
 After multi-head attention, each position is passed through a **position-wise feed-forward network**:
 
-\[
-\text{FFN}(x) = \max(0, x \mathbf{W}_1 + b_1)\,\mathbf{W}_2 + b_2
-\]
+```
+FFN(x) = max(0, xW1 + b1) * W2 + b2
+```
 
 This is applied identically to each position, separately and identically, hence “position-wise.”
 
@@ -94,18 +91,18 @@ This is applied identically to each position, separately and identically, hence 
 
 Because the model contains no recurrence or convolution, it needs a way to encode sequence order. The **positional encoding** adds sines and cosines of varying frequencies to the embeddings:
 
-\[
-\text{PE}_{(pos,\, 2i)} = \sin\Bigl(\frac{\text{pos}}{10000^{2i/d_{\text{model}}}}\Bigr), \quad
-\text{PE}_{(pos,\, 2i+1)} = \cos\Bigl(\frac{\text{pos}}{10000^{2i/d_{\text{model}}}}\Bigr)
-\]
+```
+PE(pos, 2i)   = sin(pos / 10000^(2i / d_model))
+PE(pos, 2i+1) = cos(pos / 10000^(2i / d_model))
+```
 
 ### 2.5 Add & Norm (Residual Connections)
 
 Each sub-layer output is added to the input (residual connection) and then normalized via **Layer Normalization**:
 
-\[
-\text{LayerOutput} = \text{LayerNorm}(x + \text{Sublayer}(x))
-\]
+```
+LayerOutput = LayerNorm(x + Sublayer(x))
+```
 
 ---
 
@@ -121,11 +118,11 @@ We implement these components in **pure JAX**. Our code structure includes:
 - **`positional_encoding(seq_len, dim_model)`**  
 - **`encoder_layer(...)`, `decoder_layer(...)`**  
 - **`encoder_stack(...)`, `decoder_stack(...)`**  
-- **`transformer_forward_pass(...)`**  
+- **`transformer_forward_pass(...)`**
 
 ### Functions Created
 
-1. **Scaled Dot-Product Attention**: Implements the equation \(\mathbf{Q}\mathbf{K}^\top / \sqrt{d_k}\) → softmax → multiply by \(\mathbf{V}\).  
+1. **Scaled Dot-Product Attention**: Implements the equation `QK^T / sqrt(d_k)` → softmax → multiply by `V`.  
 2. **Multi-Head Attention**: Splits queries, keys, values into multiple heads, applies scaled dot-product attention, then concatenates.  
 3. **Feed-Forward Network**: Two fully connected layers with a ReLU (or user-defined) activation.  
 4. **Positional Encoding**: Returns a matrix of sine/cosine positional encodings.  
@@ -151,10 +148,10 @@ We train the model using **JAX** for automatic differentiation and `jit` compila
 
 ### Parameters (as in the Paper)
 
-- **Number of Layers** \(N\): 6  
-- **Hidden Dimension** \((d_{\text{model}})\): 512  
-- **Feed-Forward Dimension** \((d_{\text{ff}})\): 2048  
-- **Number of Heads** \((h)\): 8  
+- **Number of Layers** (`N`): 6  
+- **Hidden Dimension** (`d_model`): 512  
+- **Feed-Forward Dimension** (`d_ff`): 2048  
+- **Number of Heads** (`h`): 8  
 - **Vocabulary Size**: 37,000 (example)
 
 ### Dummy Dataset and JIT Compilation
@@ -168,6 +165,3 @@ We train the model using **JAX** for automatic differentiation and `jit` compila
 5. **Print** intermediate losses and track progress.
 
 In practice, you would replace the dummy dataset with real data (e.g., WMT 2014 EN-DE). The code is structured to demonstrate how the components come together in a training loop using JAX.
-
----
-```
